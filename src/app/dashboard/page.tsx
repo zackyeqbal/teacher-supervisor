@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { logout } from "../login/actions";
 
@@ -14,6 +15,9 @@ export default async function DashboardPage() {
     .select("full_name, role")
     .eq("id", user!.id)
     .single();
+
+  const isSupervisor =
+    profile?.role === "supervisor" || profile?.role === "admin";
 
   return (
     <main className="mx-auto max-w-2xl p-8">
@@ -39,9 +43,23 @@ export default async function DashboardPage() {
         </p>
       </div>
 
-      <p className="mt-4 text-sm text-gray-400">
-        ✅ Alur auth + proteksi route + role sudah jalan.
-      </p>
+      <div className="mt-6">
+        {isSupervisor ? (
+          <Link
+            href="/observations"
+            className="inline-block rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          >
+            Kelola Observasi →
+          </Link>
+        ) : (
+          <Link
+            href="/my-observations"
+            className="inline-block rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          >
+            Observasi Saya (Unggah RPP) →
+          </Link>
+        )}
+      </div>
     </main>
   );
 }
