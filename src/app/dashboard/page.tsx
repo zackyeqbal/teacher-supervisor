@@ -172,19 +172,6 @@ export default async function DashboardPage() {
         </form>
       </div>
 
-      <div className="rounded-xl border bg-white p-6">
-        <p className="text-sm text-gray-500">Halo,</p>
-        <p className="text-lg font-medium">
-          {profile?.full_name ?? user?.email}
-        </p>
-        <p className="mt-2 text-sm">
-          Role kamu:{" "}
-          <span className="rounded bg-blue-100 px-2 py-0.5 font-medium text-blue-800">
-            {profile?.role ?? "—"}
-          </span>
-        </p>
-      </div>
-
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-lg bg-slate-900 p-4 text-white">
           <p className="text-sm text-slate-300">Total guru</p>
