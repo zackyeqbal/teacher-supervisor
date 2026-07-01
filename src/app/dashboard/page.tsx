@@ -70,6 +70,7 @@ export default async function DashboardPage() {
   let observationsThisMonth = 0;
   let rppWaiting = 0;
   let completedCount = 0;
+  let plansMap = new Map<string, Array<{ id: string; observation_id: string; file_name?: string | null; uploaded_at?: string | null }>>();
 
   if (isSupervisor) {
     const today = new Date().toISOString().slice(0, 10);
@@ -89,6 +90,21 @@ export default async function DashboardPage() {
       .limit(5);
 
     upcomingObservations = (data ?? []) as UpcomingObservation[];
+
+    // Fetch lesson plans for those upcoming observations so we can show RPP status
+    const obsIds = upcomingObservations.map((o) => o.id);
+    const plansMap = new Map<string, Array<{ id: string; observation_id: string; file_name?: string | null; uploaded_at?: string | null }>>();
+    if (obsIds.length) {
+      const { data: plans } = await supabase
+        .from("lesson_plans")
+        .select("id, observation_id, file_name, uploaded_at")
+        .in("observation_id", obsIds);
+      (plans ?? []).forEach((p: any) => {
+        const arr = plansMap.get(p.observation_id) ?? [];
+        arr.push(p);
+        plansMap.set(p.observation_id, arr);
+      });
+    }
 
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -188,6 +204,67 @@ export default async function DashboardPage() {
         </div>
       </div>
 
+      {/* Top summaries: 3 nearest observations + RPP masuk */}
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div className="rounded-xl border bg-white p-6">
+          <h3 className="text-lg font-semibold mb-3">Jadwal observasi — 3 terdekat</h3>
+          {upcomingObservations.length === 0 ? (
+            <p className="text-sm text-gray-500">Belum ada observasi terjadwal.</p>
+          ) : (
+            <ul className="space-y-3">
+              {upcomingObservations.slice(0, 3).map((o) => {
+                const teacher = Array.isArray(o.teacher) ? o.teacher[0] : o.teacher;
+                const role = Array.isArray(o.teaching_roles) ? o.teaching_roles[0] : o.teaching_roles;
+                return (
+                  <li key={o.id} className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium">{teacher?.full_name ?? "—"}</p>
+                      <p className="text-sm text-gray-500">{teacher?.subject ?? "—"} · {o.class_name ?? "-"}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-semibold">{new Date(o.observed_at).toLocaleDateString("id-ID", { day: "numeric", month: "short" })}</p>
+                      <p className="text-xs text-amber-700">{o.status}</p>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+
+        <div className="rounded-xl border bg-white p-6">
+          <h3 className="text-lg font-semibold mb-3">RPP masuk — paling dekat</h3>
+          {upcomingObservations.length === 0 ? (
+            <p className="text-sm text-gray-500">Belum ada observasi terjadwal.</p>
+          ) : (
+            <ul className="space-y-3">
+              {upcomingObservations.slice(0, 5).map((o) => {
+                const teacher = Array.isArray(o.teacher) ? o.teacher[0] : o.teacher;
+                const plans = plansMap.get(o.id) ?? [];
+                const uploaded = plans.length > 0;
+                return (
+                  <li key={o.id} className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium">{teacher?.full_name ?? "—"}</p>
+                      <p className="text-sm text-gray-500">{teacher?.subject ?? "—"} · {o.class_name ?? "-"}</p>
+                    </div>
+                    <div className="text-right">
+                      {uploaded ? (
+                        <p className="text-sm font-semibold text-green-700">
+                          Sudah · {plans[0].uploaded_at ? new Date(plans[0].uploaded_at).toLocaleDateString("id-ID") : "Terunggah"}
+                        </p>
+                      ) : (
+                        <p className="text-sm font-semibold text-red-600">Belum</p>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      </div>
+
       <div className="mt-6">
         {isSupervisor ? (
           <Link
@@ -229,129 +306,23 @@ export default async function DashboardPage() {
             <p className="text-base font-semibold text-blue-900">{todayLabel}</p>
           </div>
 
-          <div className="mb-5 overflow-hidden rounded-lg border">
-            <div className="grid grid-cols-7 border-b bg-slate-50 text-center text-xs font-semibold uppercase tracking-wide text-slate-600">
-              {['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'].map((day) => (
-                <div key={day} className="border-r px-2 py-2 last:border-r-0">
-                  {day}
-                </div>
-              ))}
-            </div>
-            <div className="grid grid-cols-7 bg-white">
-              {calendarDays.map((day) => {
-                const dayObservations = calendarObservations.filter(
-                  (item) => item.observed_at === day.key,
-                );
-
-                return (
-                  <div
-                    key={day.key}
-                    className={`min-h-24 border-r border-b p-2 text-sm last:border-r-0 ${
-                      day.isCurrentMonth ? 'bg-white' : 'bg-slate-50 text-slate-400'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between">
-                      <span
-                        className={`flex h-7 w-7 items-center justify-center rounded-full text-sm font-medium ${
-                          day.isToday ? 'bg-blue-600 text-white' : ''
-                        }`}
-                      >
-                        {day.day}
-                      </span>
-                    </div>
-                    <div className="mt-2 space-y-1">
-                      {dayObservations.slice(0, 2).map((observation) => {
-                        const teacher = Array.isArray(observation.teacher)
-                          ? observation.teacher[0]
-                          : observation.teacher;
-                        const raw = observation.observed_at ?? "";
-                        const hasTime = raw.length > 10 && raw.includes(":");
-                        const time = hasTime
-                          ? new Date(raw).toLocaleTimeString("id-ID", {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })
-                          : null;
-
-                        return (
-                          <p
-                            key={observation.id}
-                            className="truncate text-[10px] leading-4 text-slate-700"
-                          >
-                            {teacher?.full_name ?? "—"}
-                            {time ? <span className="ml-1 text-[10px] text-slate-500"> · {time}</span> : null}
-                          </p>
-                        );
-                      })}
-                      {dayObservations.length > 2 && (
-                        <p className="text-[10px] font-medium text-blue-600">
-                          +{dayObservations.length - 2} lagi
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
           {upcomingObservations.length === 0 ? (
-            <p className="mt-5 rounded-lg border border-dashed p-4 text-sm text-gray-500">
+            <p className="rounded-lg border border-dashed p-4 text-sm text-gray-500">
               Belum ada observasi terjadwal untuk waktu dekat.
             </p>
           ) : (
-            <div className="mt-5">
-              <h3 className="mb-2 text-sm font-semibold text-slate-800">
-                Jadwal terdekat
-              </h3>
-              <ul className="space-y-3">
-                {upcomingObservations.map((observation) => {
-                  const teacher = Array.isArray(observation.teacher)
-                    ? observation.teacher[0]
-                    : observation.teacher;
-                  const role = Array.isArray(observation.teaching_roles)
-                    ? observation.teaching_roles[0]
-                    : observation.teaching_roles;
-
-                  return (
-                    <li
-                      key={observation.id}
-                      className="rounded-lg border border-slate-200 p-4"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="font-medium text-slate-900">
-                            {teacher?.full_name ?? '—'}
-                          </p>
-                          <p className="mt-1 text-sm text-gray-500">
-                            {role?.name && (
-                              <span className="mr-2 rounded bg-slate-100 px-1.5 py-0.5 text-xs font-normal text-slate-600">
-                                {role.name}
-                              </span>
-                            )}
-                            {teacher?.subject ?? '—'} · {observation.class_name ?? '-'}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm font-semibold text-slate-900">
-                            {new Date(observation.observed_at).toLocaleDateString(
-                              'id-ID',
-                              {
-                                day: 'numeric',
-                                month: 'short',
-                                year: 'numeric',
-                              },
-                            )}
-                          </p>
-                          <p className="text-xs font-medium text-amber-700">
-                            {observation.status}
-                          </p>
-                        </div>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
+            <div className="space-y-3">
+              {upcomingObservations.map((o) => {
+                const teacher = Array.isArray(o.teacher) ? o.teacher[0] : o.teacher;
+                return (
+                  <div key={o.id} className="rounded-lg border bg-slate-50 p-4">
+                    <p className="font-medium">{teacher?.full_name ?? "—"}</p>
+                    <p className="text-sm text-gray-500">
+                      {teacher?.subject ?? "—"} · {o.class_name ?? "-"} · {new Date(o.observed_at).toLocaleDateString("id-ID")}
+                    </p>
+                  </div>
+                );
+              })}
             </div>
           )}
         </section>
