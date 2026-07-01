@@ -18,15 +18,18 @@ export default async function ObservationDetailPage({
   const { data: obs } = await supabase
     .from("observations")
     .select(
-      "id, observed_at, class_name, status, final_score, general_notes, rubric_id, teachers(full_name, subject), rubrics(name, scale_max)",
+      "id, observed_at, class_name, status, final_score, general_notes, rubric_id, teacher:profiles!teacher_id(full_name, subject), rubrics(name, scale_max), teaching_roles(name)",
     )
     .eq("id", id)
     .single();
 
   if (!obs) notFound();
 
-  const teacher = Array.isArray(obs.teachers) ? obs.teachers[0] : obs.teachers;
+  const teacher = Array.isArray(obs.teacher) ? obs.teacher[0] : obs.teacher;
   const rubric = Array.isArray(obs.rubrics) ? obs.rubrics[0] : obs.rubrics;
+  const role = Array.isArray(obs.teaching_roles)
+    ? obs.teaching_roles[0]
+    : obs.teaching_roles;
   const scaleMax = rubric?.scale_max ?? 4;
 
   // Indikator + skor yang sudah ada (kalau pernah disimpan) + file RPP.
@@ -82,6 +85,11 @@ export default async function ObservationDetailPage({
             {teacher?.subject} · {obs.class_name ?? "-"} ·{" "}
             {new Date(obs.observed_at).toLocaleDateString("id-ID")}
           </p>
+          {role?.name && (
+            <span className="mt-1 inline-block rounded bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+              {role.name}
+            </span>
+          )}
           <p className="mt-1 text-xs text-gray-400">{rubric?.name}</p>
         </div>
         {obs.status === "selesai" && obs.final_score != null && (
@@ -146,7 +154,7 @@ export default async function ObservationDetailPage({
                         className="w-16 rounded-md border bg-white px-2 py-1 text-sm"
                       >
                         <option value="">—</option>
-                        {Array.from({ length: scaleMax }, (_, i) => i + 1).map((n) => (
+                        {Array.from({ length: scaleMax + 1 }, (_, i) => i).map((n) => (
                           <option key={n} value={n}>
                             {n}
                           </option>
@@ -168,7 +176,7 @@ export default async function ObservationDetailPage({
         ))}
 
         <div className="flex items-center justify-between">
-          <p className="text-xs text-gray-400">Skala skor: 1–{scaleMax}</p>
+          <p className="text-xs text-gray-400">Skala skor: 0–{scaleMax}</p>
           <button
             disabled={!plan}
             className="rounded-md bg-blue-600 px-5 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-300"

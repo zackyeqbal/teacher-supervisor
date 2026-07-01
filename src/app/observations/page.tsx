@@ -5,10 +5,12 @@ import { scoreCategory } from "@/lib/score";
 export default async function ObservationsPage() {
   const supabase = await createClient();
 
-  // Ambil observasi + nama guru (lewat relasi teacher_id).
+  // Ambil observasi + nama guru (profiles lewat relasi teacher_id).
   const { data: observations } = await supabase
     .from("observations")
-    .select("id, observed_at, status, final_score, class_name, teachers(full_name, subject)")
+    .select(
+      "id, observed_at, status, final_score, class_name, teacher:profiles!teacher_id(full_name, subject), teaching_roles(name)",
+    )
     .order("observed_at", { ascending: false });
 
   return (
@@ -35,8 +37,11 @@ export default async function ObservationsPage() {
       ) : (
         <ul className="space-y-2">
           {observations.map((o) => {
-            // teachers bisa berupa objek atau array tergantung relasi — amankan.
-            const teacher = Array.isArray(o.teachers) ? o.teachers[0] : o.teachers;
+            // teacher bisa berupa objek atau array tergantung relasi — amankan.
+            const teacher = Array.isArray(o.teacher) ? o.teacher[0] : o.teacher;
+            const role = Array.isArray(o.teaching_roles)
+              ? o.teaching_roles[0]
+              : o.teaching_roles;
             const cat =
               o.final_score != null ? scoreCategory(Number(o.final_score)) : null;
             return (
@@ -46,7 +51,14 @@ export default async function ObservationsPage() {
                   className="flex items-center justify-between rounded-lg border bg-white p-4 hover:bg-gray-50"
                 >
                   <div>
-                    <p className="font-medium">{teacher?.full_name ?? "—"}</p>
+                    <p className="font-medium">
+                      {teacher?.full_name ?? "—"}
+                      {role?.name && (
+                        <span className="ml-2 rounded bg-slate-100 px-1.5 py-0.5 text-xs font-normal text-slate-600">
+                          {role.name}
+                        </span>
+                      )}
+                    </p>
                     <p className="text-sm text-gray-500">
                       {teacher?.subject} · {o.class_name ?? "-"} ·{" "}
                       {new Date(o.observed_at).toLocaleDateString("id-ID")}

@@ -15,32 +15,13 @@ export default async function MyObservationsPage({
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("teacher_id, full_name")
-    .eq("id", user!.id)
-    .single();
-
-  // Akun guru belum ditautkan ke data guru.
-  if (!profile?.teacher_id) {
-    return (
-      <main className="mx-auto max-w-2xl p-8">
-        <Link href="/dashboard" className="text-sm text-blue-600 hover:underline">
-          ← Dashboard
-        </Link>
-        <h1 className="mt-1 text-2xl font-semibold">Observasi Saya</h1>
-        <p className="mt-6 rounded-lg border border-amber-200 bg-amber-50 p-6 text-sm text-amber-800">
-          Akun kamu belum ditautkan ke data guru. Hubungi supervisor/admin untuk
-          menautkan akun ini ke data guru kamu.
-        </p>
-      </main>
-    );
-  }
-
+  // Guru = profilnya sendiri; observasi miliknya = teacher_id sama dengan id user.
   const { data: observations } = await supabase
     .from("observations")
-    .select("id, observed_at, status, class_name, rubrics(name), lesson_plans(id, file_name)")
-    .eq("teacher_id", profile.teacher_id)
+    .select(
+      "id, observed_at, status, class_name, rubrics(name), teaching_roles(name), lesson_plans(id, file_name)",
+    )
+    .eq("teacher_id", user!.id)
     .order("observed_at", { ascending: false });
 
   return (
@@ -70,6 +51,9 @@ export default async function MyObservationsPage({
         <ul className="space-y-3">
           {observations.map((o) => {
             const rubric = Array.isArray(o.rubrics) ? o.rubrics[0] : o.rubrics;
+            const role = Array.isArray(o.teaching_roles)
+              ? o.teaching_roles[0]
+              : o.teaching_roles;
             const plan = Array.isArray(o.lesson_plans)
               ? o.lesson_plans[0]
               : o.lesson_plans;
@@ -86,6 +70,7 @@ export default async function MyObservationsPage({
                       })}
                     </p>
                     <p className="text-xs text-gray-500">
+                      {role?.name ? `${role.name} · ` : ""}
                       {rubric?.name} · {o.class_name ?? "-"}
                     </p>
                   </div>

@@ -49,10 +49,16 @@ export async function saveScores(observationId: string, formData: FormData) {
   const scored = [];
   for (const item of items) {
     const raw = formData.get(`score_${item.id}`);
-    const score = raw ? Number(raw) : 0;
-    if (!score || score < 1 || score > scaleMax) {
+    // Bedakan "belum diisi" (kosong) dari skor 0 yang valid.
+    if (raw === null || raw === "") {
       redirect(
         `/observations/${observationId}?error=${encodeURIComponent("Semua indikator wajib diberi skor")}`,
+      );
+    }
+    const score = Number(raw);
+    if (Number.isNaN(score) || score < 0 || score > scaleMax) {
+      redirect(
+        `/observations/${observationId}?error=${encodeURIComponent("Skor tidak valid")}`,
       );
     }
     const note = (formData.get(`note_${item.id}`) as string) || null;

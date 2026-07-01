@@ -1,23 +1,50 @@
 -- ============================================================
 -- Teacher Supervisor — Data Awal (Seed)
 -- Jalankan di Supabase SQL Editor SETELAH schema.sql.
--- Isi: 1 rubrik standar (5 kategori, 18 indikator) + 4 guru contoh.
+-- Isi: 13 tugas guru + rubrik "Guru Mata Pelajaran" (32 indikator, skala 0-4).
+--
+-- CATATAN: guru = akun login, jadi TIDAK di-seed di sini.
+-- Buat guru lewat: Authentication > Users > Add user (Auto Confirm),
+-- lalu Table Editor > profiles: set role='guru', isi subject & class_name.
 -- ============================================================
--- CATATAN: jangan jalankan dua kali (nanti datanya dobel).
--- Kalau mau ulang dari bersih, hapus dulu data lama:
+-- Jangan jalankan dua kali (nanti rubriknya dobel).
+-- Kalau mau ulang dari bersih, hapus dulu:
 --   delete from public.rubric_items;
 --   delete from public.rubrics;
---   delete from public.teachers;
 -- ============================================================
 
 -- ------------------------------------------------------------
--- 1. RUBRIK + INDIKATOR (skala 1-4, total bobot = 100)
+-- 1. TUGAS/PERAN GURU (13 jenis) — tiap tugas punya rubriknya sendiri
+-- ------------------------------------------------------------
+insert into public.teaching_roles (name) values
+  ('Guru Mata Pelajaran'),
+  ('Wakil Kepala Sarana'),
+  ('Wakil Kepala Kurikulum'),
+  ('Wakil Kepala Kesiswaan'),
+  ('Wakil Kepala Hubungan Masyarakat'),
+  ('Kepala Lab'),
+  ('Kepala Perpustakaan'),
+  ('Wali Kelas'),
+  ('Pembina OSIS'),
+  ('Pembina UKS'),
+  ('Pembina Pramuka'),
+  ('Guru Piket'),
+  ('Guru BK')
+on conflict (name) do nothing;
+
+-- ------------------------------------------------------------
+-- 2. RUBRIK + INDIKATOR untuk tugas "Guru Mata Pelajaran"
+--    Sumber: Instrumen Supervisi Proses Pembelajaran MTsN Kota Cimahi.
+--    Skala 0-4, 32 indikator, bobot sama rata (1).
+--    NILAI = total skor / (4 × 32) × 100  (skor maksimal ideal = 128).
+--    Rubrik untuk 12 tugas lain dibuat menyusul (via app/Table Editor).
 -- ------------------------------------------------------------
 with r as (
-  insert into public.rubrics (name, description, scale_max, is_active)
+  insert into public.rubrics (teaching_role_id, name, description, scale_max, is_active)
   values (
-    'Rubrik Supervisi Kelas (Standar)',
-    'Skala 1-4. Skor akhir = Σ(skor × bobot) / (4 × Σbobot) × 100.',
+    (select id from public.teaching_roles where name = 'Guru Mata Pelajaran'),
+    'Instrumen Supervisi Proses Pembelajaran (Guru Mata Pelajaran)',
+    'Skala 0-4, 32 indikator bobot sama. NILAI = total skor / skor maksimal ideal (128) × 100.',
     4,
     true
   )
@@ -27,42 +54,69 @@ insert into public.rubric_items (rubric_id, category, indicator, weight, sort_or
 select r.id, v.category, v.indicator, v.weight, v.sort_order
 from r,
 (values
-  -- A. Perencanaan Pembelajaran (15)
-  ('A. Perencanaan Pembelajaran', 'Menyiapkan RPP/modul ajar yang lengkap dan sesuai kurikulum', 5,  1),
-  ('A. Perencanaan Pembelajaran', 'Tujuan pembelajaran jelas dan terukur',                        5,  2),
-  ('A. Perencanaan Pembelajaran', 'Materi & media relevan dengan tujuan',                         5,  3),
-  -- B. Pelaksanaan Pembelajaran (40)
-  ('B. Pelaksanaan Pembelajaran', 'Membuka pelajaran (apersepsi & motivasi)',                     5,  4),
-  ('B. Pelaksanaan Pembelajaran', 'Penguasaan materi pelajaran',                                  8,  5),
-  ('B. Pelaksanaan Pembelajaran', 'Penggunaan metode/strategi yang variatif & tepat',             7,  6),
-  ('B. Pelaksanaan Pembelajaran', 'Pemanfaatan media/teknologi pembelajaran',                     5,  7),
-  ('B. Pelaksanaan Pembelajaran', 'Pengelolaan kelas & interaksi dengan siswa',                   8,  8),
-  ('B. Pelaksanaan Pembelajaran', 'Penggunaan bahasa yang jelas dan komunikatif',                 4,  9),
-  ('B. Pelaksanaan Pembelajaran', 'Menutup pelajaran (rangkuman & refleksi)',                     3, 10),
-  -- C. Penilaian / Asesmen (20)
-  ('C. Penilaian / Asesmen',      'Melakukan penilaian sesuai tujuan pembelajaran',               7, 11),
-  ('C. Penilaian / Asesmen',      'Memberi umpan balik kepada siswa',                             7, 12),
-  ('C. Penilaian / Asesmen',      'Mendorong keterlibatan & partisipasi aktif siswa',             6, 13),
-  -- D. Sikap & Profesionalisme (15)
-  ('D. Sikap & Profesionalisme',  'Kedisiplinan (kehadiran & ketepatan waktu)',                   5, 14),
-  ('D. Sikap & Profesionalisme',  'Penampilan & keteladanan',                                     5, 15),
-  ('D. Sikap & Profesionalisme',  'Kemampuan berkomunikasi & kerja sama',                         5, 16),
-  -- E. Pengembangan Diri (10)
-  ('E. Pengembangan Diri',        'Mengikuti pelatihan/peningkatan kompetensi',                   5, 17),
-  ('E. Pengembangan Diri',        'Inovasi & refleksi dalam mengajar',                            5, 18)
+  -- I. PENDAHULUAN
+  ('I. Pendahuluan', 'Guru hadir tepat waktu', 1, 1),
+  ('I. Pendahuluan', 'Guru mengenakan busana sesuai aturan yang berlaku, berpenampilan menarik yang dapat memberikan contoh pada siswa sebagai penerapan Pendidikan Karakter', 1, 2),
+  ('I. Pendahuluan', 'Guru menyiapkan fisik dan psikis siswa agar siap untuk belajar dan menerapkan Pendidikan Karakter dalam pembelajarannya', 1, 3),
+  ('I. Pendahuluan', 'Guru memberikan pertanyaan pemantik agar siswa dapat mengkaitkan materi sekarang dengan materi sebelumnya', 1, 4),
+  ('I. Pendahuluan', 'Guru memberikan motivasi dengan pertanyaan pemantik agar siswa mengetahui manfaat dari materi yang akan dipelajari', 1, 5),
+  ('I. Pendahuluan', 'Guru memberikan motivasi dengan pertanyaan pemantik agar siswa mengetahui kaitan dari materi yang akan dipelajari dengan ayat-ayat dalam Al Quran', 1, 6),
+  ('I. Pendahuluan', 'Guru menyampaikan tujuan pembelajaran yang akan dipelajari', 1, 7),
+  -- II.A Penguasaan Materi Pembelajaran
+  ('II.A Penguasaan Materi Pembelajaran', 'Kemampuan menyesuaikan materi pembelajaran dengan tujuan pembelajaran yang akan dicapai', 1, 8),
+  ('II.A Penguasaan Materi Pembelajaran', 'Menyajikan pembahasan elemen materi pembelajaran lengkap sesuai dengan konsep CP yang dipelajari', 1, 9),
+  ('II.A Penguasaan Materi Pembelajaran', 'Menggunakan pendekatan/metode pembelajaran yang dapat menstimulasi kedalaman materi yang dipelajari', 1, 10),
+  ('II.A Penguasaan Materi Pembelajaran', 'Memotivasi peserta didik untuk berpartisipasi aktif agar terbangun sikap pembelajar mandiri', 1, 11),
+  ('II.A Penguasaan Materi Pembelajaran', 'Kemampuan melaksanakan pembelajaran mengikuti kerangka Alur Tujuan Pembelajaran', 1, 12),
+  -- II.B Kemampuan Mengimplementasi Pembelajaran
+  ('II.B Kemampuan Mengimplementasi Pembelajaran', 'Kemampuan mengkoneksi materi pembelajaran yang memunculkan kemampuan HOTS pada siswa', 1, 13),
+  ('II.B Kemampuan Mengimplementasi Pembelajaran', 'Kemampuan mengkoneksi materi pembelajaran yang relevan dengan kehidupan sehari-hari sehingga memunculkan kemampuan literasi siswa', 1, 14),
+  ('II.B Kemampuan Mengimplementasi Pembelajaran', 'Kemampuan memfasilitasi peserta didik melalui pemberian tugas/diskusi/dll sehingga memunculkan kemampuan literasi/numerasi siswa', 1, 15),
+  ('II.B Kemampuan Mengimplementasi Pembelajaran', 'Kemampuan memberikan ruang yang cukup bagi prakarsa, kreativitas, kemandirian sesuai bakat, minat, dan perkembangan fisik serta psikologis peserta didik (creativity and innovation)', 1, 16),
+  -- II.C Memunculkan Kemampuan Abad 21
+  ('II.C Memunculkan Kemampuan Abad 21', 'Kemampuan menggunakan metode/pendekatan pembelajaran yang tepat sehingga siswa memiliki kemampuan komunikasi yang baik', 1, 17),
+  ('II.C Memunculkan Kemampuan Abad 21', 'Metode pembelajaran yang dilaksanakan menantang sehingga memunculkan kemampuan berpikir kritis dan penyelesaian masalah', 1, 18),
+  ('II.C Memunculkan Kemampuan Abad 21', 'Kemampuan pembelajaran mendorong peserta didik untuk membiasakan bekerja sama (collaboration)', 1, 19),
+  -- II.D Kemampuan Menggunakan Media dan Sumber Belajar
+  ('II.D Kemampuan Menggunakan Media dan Sumber Belajar', 'Kemampuan menunjukkan keterampilan dalam menggunakan sumber pembelajaran sehingga menghasilkan pesan yang menarik dan bermakna', 1, 20),
+  ('II.D Kemampuan Menggunakan Media dan Sumber Belajar', 'Kemampuan menunjukkan keterampilan dalam menggunakan media pembelajaran sehingga menghasilkan pesan yang menarik dan bermakna', 1, 21),
+  -- II.E Kemampuan Berinteraksi dengan Siswa
+  ('II.E Kemampuan Berinteraksi dengan Siswa', 'Kemampuan melibatkan peserta didik dalam pemanfaatan sumber pembelajaran', 1, 22),
+  ('II.E Kemampuan Berinteraksi dengan Siswa', 'Kemampuan memberikan umpan balik positif (penguatan) dalam bentuk lisan/tulisan/isyarat/apresiasi terhadap pencapaian TP yang dilakukan siswa', 1, 23),
+  ('II.E Kemampuan Berinteraksi dengan Siswa', 'Kemampuan melibatkan peserta didik secara aktif dalam setiap kegiatan pembelajaran', 1, 24),
+  ('II.E Kemampuan Berinteraksi dengan Siswa', 'Melibatkan peserta didik mencari informasi yang luas dan dalam dari berbagai sumber', 1, 25),
+  ('II.E Kemampuan Berinteraksi dengan Siswa', 'Memfasilitasi peserta didik untuk menyajikan hasil kerja individu maupun kelompok', 1, 26),
+  ('II.E Kemampuan Berinteraksi dengan Siswa', 'Memfasilitasi peserta didik melakukan refleksi untuk memperoleh pengalaman belajar yang telah dilakukan', 1, 27),
+  ('II.E Kemampuan Berinteraksi dengan Siswa', 'Menggunakan bahasa Indonesia yang baik dan benar', 1, 28),
+  -- III. KEGIATAN PENUTUP
+  ('III. Kegiatan Penutup', 'Bersama-sama dengan peserta didik membuat rangkuman/simpulan pelajaran', 1, 29),
+  ('III. Kegiatan Penutup', 'Melakukan penilaian terhadap kegiatan yang telah dilaksanakan secara konsisten dan terprogram', 1, 30),
+  ('III. Kegiatan Penutup', 'Memberi umpan balik terhadap proses dan hasil pembelajaran', 1, 31),
+  ('III. Kegiatan Penutup', 'Menyampaikan rencana pembelajaran berikutnya', 1, 32)
 ) as v(category, indicator, weight, sort_order);
-
--- ------------------------------------------------------------
--- 2. GURU CONTOH
--- ------------------------------------------------------------
-insert into public.teachers (full_name, subject, class_name, status) values
-  ('Ani Rahmawati',   'Matematika',         '7A', 'aktif'),
-  ('Budi Santoso',    'Bahasa Indonesia',   '8B', 'aktif'),
-  ('Citra Dewi',      'IPA',                '9C', 'aktif'),
-  ('Dedi Kurniawan',  'IPS',                '7B', 'aktif');
 
 -- ------------------------------------------------------------
 -- Cek hasil
 -- ------------------------------------------------------------
--- select count(*) from public.rubric_items;  -- harus 18
--- select count(*) from public.teachers;      -- harus 4
+-- select count(*) from public.rubric_items;    -- harus 32
+-- select count(*) from public.teaching_roles;  -- harus 13
+
+-- ------------------------------------------------------------
+-- (Opsional) Jadikan akun tertentu sebagai guru + isi datanya.
+-- Ganti email sesuai akun yang sudah dibuat via Authentication.
+-- ------------------------------------------------------------
+-- update public.profiles
+-- set role = 'guru', full_name = 'Ani Rahmawati',
+--     subject = 'Matematika', class_name = '7A'
+-- where email = 'guru@sekolah.com';
+
+-- ------------------------------------------------------------
+-- (Opsional) Tandai tugas yang diemban guru tsb (bisa lebih dari satu).
+-- Contoh: Ani = Guru Mata Pelajaran + Wali Kelas.
+-- ------------------------------------------------------------
+-- insert into public.teacher_roles (teacher_id, teaching_role_id)
+-- select p.id, t.id
+-- from public.profiles p, public.teaching_roles t
+-- where p.email = 'guru@sekolah.com'
+--   and t.name in ('Guru Mata Pelajaran', 'Wali Kelas')
+-- on conflict do nothing;

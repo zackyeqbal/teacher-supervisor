@@ -11,9 +11,31 @@ export default async function NewObservationPage({
   const supabase = await createClient();
 
   const [{ data: teachers }, { data: rubrics }] = await Promise.all([
-    supabase.from("teachers").select("id, full_name, subject").eq("status", "aktif").order("full_name"),
-    supabase.from("rubrics").select("id, name").eq("is_active", true).order("name"),
+    supabase
+      .from("profiles")
+      .select("id, full_name, subject")
+      .eq("role", "guru")
+      .eq("status", "aktif")
+      .order("full_name"),
+    // Tugas yang sudah punya rubrik aktif = yang bisa diobservasi.
+    supabase
+      .from("rubrics")
+      .select("teaching_role_id, teaching_roles(name)")
+      .eq("is_active", true)
+      .not("teaching_role_id", "is", null),
   ]);
+
+  // Daftar tugas unik (value = teaching_role_id, label = nama tugas).
+  const roleMap = new Map<string, string>();
+  for (const r of rubrics ?? []) {
+    const role = Array.isArray(r.teaching_roles)
+      ? r.teaching_roles[0]
+      : r.teaching_roles;
+    if (r.teaching_role_id && role?.name) {
+      roleMap.set(r.teaching_role_id, role.name);
+    }
+  }
+  const roles = Array.from(roleMap, ([id, name]) => ({ id, name }));
 
   const today = new Date().toISOString().slice(0, 10);
 
@@ -49,22 +71,25 @@ export default async function NewObservationPage({
         </div>
 
         <div>
-          <label htmlFor="rubric_id" className="mb-1 block text-sm font-medium">
-            Rubrik
+          <label htmlFor="teaching_role_id" className="mb-1 block text-sm font-medium">
+            Dinilai sebagai (tugas)
           </label>
           <select
-            id="rubric_id"
-            name="rubric_id"
+            id="teaching_role_id"
+            name="teaching_role_id"
             required
             className="w-full rounded-md border bg-white px-3 py-2 text-sm"
           >
-            <option value="">— Pilih rubrik —</option>
-            {rubrics?.map((r) => (
+            <option value="">— Pilih tugas —</option>
+            {roles.map((r) => (
               <option key={r.id} value={r.id}>
                 {r.name}
               </option>
             ))}
           </select>
+          <p className="mt-1 text-xs text-gray-400">
+            Rubrik akan mengikuti tugas yang dipilih.
+          </p>
         </div>
 
         <div>

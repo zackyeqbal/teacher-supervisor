@@ -18,24 +18,14 @@ export async function uploadLessonPlan(
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  // Pastikan user ini guru yang ditautkan & observasi memang miliknya.
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("teacher_id")
-    .eq("id", user.id)
-    .single();
-
-  if (!profile?.teacher_id) {
-    redirect("/my-observations?error=Akun belum ditautkan ke data guru");
-  }
-
+  // Pastikan observasi ini memang milik guru yang sedang login.
   const { data: obs } = await supabase
     .from("observations")
     .select("id, teacher_id")
     .eq("id", observationId)
     .single();
 
-  if (!obs || obs.teacher_id !== profile.teacher_id) {
+  if (!obs || obs.teacher_id !== user.id) {
     redirect("/my-observations?error=Observasi tidak ditemukan");
   }
 
@@ -77,7 +67,7 @@ export async function uploadLessonPlan(
   // Catat di tabel.
   const { error: rowErr } = await supabase.from("lesson_plans").insert({
     observation_id: observationId,
-    teacher_id: profile.teacher_id,
+    teacher_id: user.id,
     file_path: path,
     file_name: file.name,
     uploaded_by: user.id,
