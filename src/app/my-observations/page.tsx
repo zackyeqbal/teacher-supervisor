@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { uploadLessonPlan } from "./actions";
 import { ALLOWED_EXT, MAX_FILE_MB } from "@/lib/files";
+import { RPP_REQUIRED_ROLE } from "@/lib/roles";
 
 export default async function MyObservationsPage({
   searchParams,
@@ -57,6 +58,7 @@ export default async function MyObservationsPage({
             const plan = Array.isArray(o.lesson_plans)
               ? o.lesson_plans[0]
               : o.lesson_plans;
+            const rppRequired = role?.name === RPP_REQUIRED_ROLE;
             const uploadWithId = uploadLessonPlan.bind(null, o.id);
             return (
               <li key={o.id} className="rounded-lg border bg-white p-4">
@@ -89,8 +91,12 @@ export default async function MyObservationsPage({
                   <p className="rounded-md bg-gray-50 px-3 py-2 text-sm text-gray-700">
                     📎 File terunggah: <span className="font-medium">{plan.file_name}</span>
                   </p>
-                ) : (
+                ) : rppRequired ? (
                   <p className="mb-2 text-sm text-red-600">Belum ada file RPP.</p>
+                ) : (
+                  <p className="mb-2 text-sm text-gray-400">
+                    RPP opsional untuk tugas ini.
+                  </p>
                 )}
 
                 <form action={uploadWithId} className="mt-2 flex items-center gap-2">

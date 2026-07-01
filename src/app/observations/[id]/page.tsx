@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { scoreCategory } from "@/lib/score";
+import { RPP_REQUIRED_ROLE } from "@/lib/roles";
 import { saveScores } from "./actions";
 
 export default async function ObservationDetailPage({
@@ -31,6 +32,8 @@ export default async function ObservationDetailPage({
     ? obs.teaching_roles[0]
     : obs.teaching_roles;
   const scaleMax = rubric?.scale_max ?? 4;
+  // RPP hanya diwajibkan untuk tugas "Guru Mata Pelajaran".
+  const rppRequired = role?.name === RPP_REQUIRED_ROLE;
 
   // Indikator + skor yang sudah ada (kalau pernah disimpan) + file RPP.
   const [{ data: items }, { data: existing }, { data: plan }] = await Promise.all([
@@ -123,10 +126,14 @@ export default async function ObservationDetailPage({
           >
             📎 {plan.file_name} — unduh
           </a>
-        ) : (
+        ) : rppRequired ? (
           <p className="text-sm text-red-600">
             ⚠️ Guru belum mengunggah file RPP. Penilaian belum bisa disimpan
             sampai file diunggah.
+          </p>
+        ) : (
+          <p className="text-sm text-gray-400">
+            Tugas ini tidak mewajibkan RPP — penilaian bisa langsung disimpan.
           </p>
         )}
       </div>
@@ -178,7 +185,7 @@ export default async function ObservationDetailPage({
         <div className="flex items-center justify-between">
           <p className="text-xs text-gray-400">Skala skor: 0–{scaleMax}</p>
           <button
-            disabled={!plan}
+            disabled={rppRequired && !plan}
             className="rounded-md bg-blue-600 px-5 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-300"
           >
             Simpan & hitung skor

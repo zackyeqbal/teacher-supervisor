@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { computeFinalScore } from "@/lib/score";
+import { RPP_REQUIRED_ROLE } from "@/lib/roles";
 
 export async function saveScores(observationId: string, formData: FormData) {
   const supabase = await createClient();
@@ -11,7 +12,7 @@ export async function saveScores(observationId: string, formData: FormData) {
   // Ambil observasi -> tahu rubrik & scale_max-nya.
   const { data: obs, error: obsErr } = await supabase
     .from("observations")
-    .select("id, rubric_id, rubrics(scale_max)")
+    .select("id, rubric_id, rubrics(scale_max), teaching_roles(name)")
     .eq("id", observationId)
     .single();
 
@@ -22,16 +23,24 @@ export async function saveScores(observationId: string, formData: FormData) {
   const rubric = Array.isArray(obs.rubrics) ? obs.rubrics[0] : obs.rubrics;
   const scaleMax = rubric?.scale_max ?? 4;
 
-  // File RPP wajib ada sebelum penilaian boleh disimpan.
-  const { count: planCount } = await supabase
-    .from("lesson_plans")
-    .select("id", { count: "exact", head: true })
-    .eq("observation_id", observationId);
+  // RPP hanya diwajibkan untuk tugas "Guru Mata Pelajaran".
+  const role = Array.isArray(obs.teaching_roles)
+    ? obs.teaching_roles[0]
+    : obs.teaching_roles;
+  const needsLessonPlan = role?.name === RPP_REQUIRED_ROLE;
 
-  if (!planCount || planCount === 0) {
-    redirect(
-      `/observations/${observationId}?error=${encodeURIComponent("Guru belum mengunggah RPP — penilaian belum bisa disimpan")}`,
-    );
+  if (needsLessonPlan) {
+    // File RPP wajib ada sebelum penilaian boleh disimpan.
+    const { count: planCount } = await supabase
+      .from("lesson_plans")
+      .select("id", { count: "exact", head: true })
+      .eq("observation_id", observationId);
+
+    if (!planCount || planCount === 0) {
+      redirect(
+        `/observations/${observationId}?error=${encodeURIComponent("Guru belum mengunggah RPP — penilaian belum bisa disimpan")}`,
+      );
+    }
   }
 
   // Ambil indikator rubrik (untuk bobot).
