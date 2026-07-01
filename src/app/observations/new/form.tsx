@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createObservation } from "./actions";
 
 export type GuruOption = {
@@ -17,11 +17,19 @@ export function NewObservationForm({
   today: string;
 }) {
   const [teacherId, setTeacherId] = useState("");
+  const selectRef = useRef<HTMLSelectElement>(null);
   const selected = guruOptions.find((g) => g.id === teacherId);
   const roles = selected?.roles ?? [];
 
+  // Sinkronkan kalau browser me-restore pilihan guru saat reload
+  // (native select bisa punya nilai tanpa memicu onChange).
+  useEffect(() => {
+    const restored = selectRef.current?.value;
+    if (restored) setTeacherId(restored);
+  }, []);
+
   return (
-    <form action={createObservation} className="space-y-4">
+    <form action={createObservation} className="space-y-4" autoComplete="off">
       <div>
         <label htmlFor="teacher_id" className="mb-1 block text-sm font-medium">
           Guru
@@ -29,8 +37,9 @@ export function NewObservationForm({
         <select
           id="teacher_id"
           name="teacher_id"
+          ref={selectRef}
           required
-          value={teacherId}
+          defaultValue=""
           onChange={(e) => setTeacherId(e.target.value)}
           className="w-full rounded-md border bg-white px-3 py-2 text-sm"
         >
