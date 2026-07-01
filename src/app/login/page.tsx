@@ -12,7 +12,7 @@ export default async function LoginPage({
       <div className="grid w-full max-w-6xl gap-6 overflow-hidden rounded-3xl bg-white shadow-xl md:grid-cols-2">
         <div className="relative h-72 overflow-hidden md:h-auto">
           <img
-            src="public\logo-sekolah.svg"
+            src="/logo-sekolah.svg"
             alt="Ilustrasi login"
             className="h-full w-full object-cover"
           />
@@ -20,7 +20,7 @@ export default async function LoginPage({
             <h2 className="text-3xl font-semibold">Selamat Datang</h2>
           </div>
           <div className="absolute left-6 top-6">
-            <img src="/logo-sekolah.png" alt="Logo sekolah" />
+            <img src="/logo-sekolah.svg" alt="Logo sekolah" className="h-12 w-auto" />
           </div>
         </div>
 
